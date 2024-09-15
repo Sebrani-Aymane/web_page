@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Categorized Task Annual Calendar</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #4e54c8;
+            --secondary-color: #8f94fb;
+            --accent-color: #ff6b6b;
+            --background-color: #f0f4f8;
+            --text-color: #333;
+            --shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            display: flex;
+            width: 95%;
+            max-width: 1400px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+        #task-container {
+            width: 300px;
+            padding: 20px;
+            background-color: var(--background-color);
+        }
+        #calendar-container {
+            flex-grow: 1;
+            padding: 20px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        h2 {
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        #task-list {
+            max-height: 50vh;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+        .task {
+            background-color: white;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        .task:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+        #add-task {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        #add-task input, #add-task select {
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #ff4757;
+            transform: scale(1.05);
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+        .month {
+            background-color: white;
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: var(--shadow);
+        }
+        .month-name {
+            text-align: center;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+        .days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+        .day {
+            aspect-ratio: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 12px;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+            position: relative;
+            cursor: pointer;
+        }
+        .day:hover {
+            background-color: var(--secondary-color);
+            color: white;
+            transform: scale(1.1);
+        }
+        .day.has-task {
+            background-color: var(--accent-color);
+            color: white;
+            font-weight: bold;
+        }
+        .task-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+        }
+        #color-picker {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+        .color-option {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        .color-option:hover {
+            transform: scale(1.2);
+        }
+        #task-details {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            z-index: 1000;
+            display: none;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="task-container">
+            <h2>Tasks</h2>
+            <div id="task-list"></div>
+            <div id="add-task">
+                <input type="text" id="new-task" placeholder="New task">
+                <input type="date" id="task-date">
+                <select id="task-category">
+                    <option value="work">Work</option>
+                    <option value="personal">Personal</option>
+                    <option value="health">Health</option>
+                    <option value="other">Other</option>
+                </select>
+                <button onclick="addTask()">Add Task</button>
+            </div>
+            <div id="color-picker">
+                <div class="color-option" style="background-color: #4e54c8;" onclick="changeTheme('#4e54c8', '#8f94fb')"></div>
+                <div class="color-option" style="background-color: #11998e;" onclick="changeTheme('#11998e', '#38ef7d')"></div>
+                <div class="color-option" style="background-color: #ee0979;" onclick="changeTheme('#ee0979', '#ff6a00')"></div>
+                <div class="color-option" style="background-color: #8e2de2;" onclick="changeTheme('#8e2de2', '#4a00e0')"></div>
+            </div>
+        </div>
+        <div id="calendar-container">
+            <h2>Annual Calendar</h2>
+            <div class="calendar-grid" id="calendar-grid"></div>
+        </div>
+    </div>
+    <div id="task-details"></div>
+    <div class="overlay" onclick="closeTaskDetails()"></div>
+
+    <script>
+        let tasks = [];
+        const categoryColors = {
+            work: '#4e54c8',
+            personal: '#11998e',
+            health: '#ee0979',
+            other: '#8e2de2'
+        };
+
+        function addTask() {
+            const input = document.getElementById('new-task');
+            const dateInput = document.getElementById('task-date');
+            const categorySelect = document.getElementById('task-category');
+            const task = input.value.trim();
+            const date = dateInput.value;
+            const category = categorySelect.value;
+            if (task && date) {
+                tasks.push({ text: task, date: new Date(date), category: category });
+                input.value = '';
+                dateInput.value = '';
+                renderTasks();
+                renderCalendar();
+            }
+        }
+
+        function deleteTask(index) {
+            tasks.splice(index, 1);
+            renderTasks();
+            renderCalendar();
+        }
+
+        function editTask(index) {
+            const task = tasks[index];
+            const newText = prompt('Edit task:', task.text);
+            if (newText !== null) {
+                task.text = newText.trim();
+                renderTasks();
+                renderCalendar();
+            }
+        }
+
+        function renderTasks() {
+            const taskList = document.getElementById('task-list');
+            taskList.innerHTML = '';
+            tasks.forEach((task, index) => {
+                const taskElement = document.createElement('div');
+                taskElement.className = 'task';
+                taskElement.innerHTML = `
+                    <span>${task.text}</span>
+                    <div>${moment(task.date).format('MMM D, YYYY')} - ${task.category}</div>
+                    <div>
+                        <button onclick="editTask(${index})">Edit</button>
+                        <button onclick="deleteTask(${index})">Delete</button>
+                    </div>
+                `;
+                taskList.appendChild(taskElement);
+            });
+        }
+
+        function renderCalendar() {
+            const calendarGrid = document.getElementById('calendar-grid');
+            calendarGrid.innerHTML = '';
+            const currentYear = moment().year();
+
+            for (let month = 0; month < 12; month++) {
+                const monthElement = document.createElement('div');
+                monthElement.className = 'month';
+                
+                const monthName = document.createElement('div');
+                monthName.className = 'month-name';
+                monthName.textContent = moment().month(month).format('MMMM');
+                monthElement.appendChild(monthName);
+
+                const daysElement = document.createElement('div');
+                daysElement.className = 'days';
+
+                const daysInMonth = moment().year(currentYear).month(month).daysInMonth();
+                const firstDay = moment().year(currentYear).month(month).startOf('month').day();
+
+                for (let i = 0; i < firstDay; i++) {
+                    daysElement.appendChild(document.createElement('div'));
+                }
+
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const dayElement = document.createElement('div');
+                    dayElement.className = 'day';
+                    dayElement.textContent = day;
+
+                    const currentDate = moment().year(currentYear).month(month).date(day);
+                    const dayTasks = tasks.filter(task => moment(task.date).isSame(currentDate, 'day'));
+                    
+                    if (dayTasks.length > 0) {
+                        dayElement.classList.add('has-task');
+                        const taskDot = document.createElement('div');
+                        taskDot.className = 'task-dot';
+                        taskDot.style.backgroundColor = categoryColors[dayTasks[0].category];
+                        dayElement.appendChild(taskDot);
+                    }
+
+                    dayElement.onclick = () => showTaskDetails(dayTasks, currentDate);
+
+                    daysElement.appendChild(dayElement);
+                }
+
+                monthElement.appendChild(daysElement);
+                calendarGrid.appendChild(monthElement);
+            }
+        }
+
+        function changeTheme(primary, secondary) {
+            document.documentElement.style.setProperty('--primary-color', primary);
+            document.documentElement.style.setProperty('--secondary-color', secondary);
+        }
+
+        function showTaskDetails(dayTasks, date) {
+            const taskDetails = document.getElementById('task-details');
+            if (dayTasks.length > 0) {
+                taskDetails.innerHTML = `
+                    <h3>Tasks for ${date.format('MMMM D, YYYY')}</h3>
+                    <ul>
+                        ${dayTasks.map(task => `<li>${task.text} (${task.category})</li>`).join('')}
+                    </ul>
+                    <button onclick="closeTaskDetails()">Close</button>
+                `;
+                taskDetails.style.display = 'block';
+                document.querySelector('.overlay').style.display = 'block';
+            } else {
+                taskDetails.innerHTML = `
+                    <h3>No tasks for ${date.format('MMMM D, YYYY')}</h3>
+                    <button onclick="closeTaskDetails()">Close</button>
+                `;
+                taskDetails.style.display = 'block';
+                document.querySelector('.overlay').style.display = 'block';
+            }
+        }
+
+        function closeTaskDetails() {
+            document.getElementById('task-details').style.display = 'none';
+            document.querySelector('.overlay').style.display = 'none';
+        }
+
+        renderCalendar();
+    </script>
+</body>
+</html>
